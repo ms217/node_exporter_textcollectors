@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -e
+#Author/Copyright: Michael Seevogel (c) 2016
+#License: GNU GPL v3
+
 
 SCRAPE_NORMAL=
 SCRAPE_LSI=
@@ -12,7 +14,7 @@ declare -a RAW_VALUE
 declare -a LSI_DRIVES
 
 
-source /opt/node_exporter_textfile/env.sh
+. /usr/lib64/node_exporter/collectors/env.sh
 
 
 
@@ -21,6 +23,7 @@ function CommandExists() {
 }
 
 function GetDrives() {
+echo $0
 
 if [[ $SCRAPE_LSI = 1 ]]
 then
@@ -75,6 +78,7 @@ fi
 }
 
 function GetRawSmartMetrics() {
+#get the raw values of each drive
 
 if [[ $SCRAPE_LSI = 1 ]]
 then
@@ -86,11 +90,8 @@ then
 
     done
 
-
 else
-
     
-    #get the raw values of each drive
     for DRIVE in ${DRIVES[*]}
     do
         RAW_VALUE+=$(smartctl -A $DRIVE | awk '/;/{f=1;};f{print;};/ID#/{f=1;}' | sed '$d' | awk ' { print "'$DRIVE'"","$2","$10"; " } ')
@@ -102,13 +103,12 @@ fi
 
 
 function FlushResults() {
+#flush the previous results
 if [[ $SCRAPE_LSI = 1 ]]
 then
+
     echo -n "" > $NODE_TEXTFILE_DIR/smart_lsi.prom
-
 else
-
-    #flush the previous results
     echo -n "" > $NODE_TEXTFILE_DIR/smart.prom
 
 fi

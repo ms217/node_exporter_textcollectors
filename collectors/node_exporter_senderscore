@@ -14,7 +14,7 @@
 #This script needs the ip command and you may have to define the PATH variable or alternatively the IP_CMD variable.
 #That's up to you and what you prefer...
 
-source /opt/node_exporter_textfile/env.sh
+. /usr/lib64/node_exporter/collectors/env.sh
  
 IP_CMD=`which ip`  
 
