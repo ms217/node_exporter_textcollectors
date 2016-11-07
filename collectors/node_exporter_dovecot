@@ -1,0 +1,289 @@
+#!/bin/bash
+#
+#Author/Copyright: Michael Seevogel (c) 2016
+#License: GNU GPL v3
+#
+
+source /usr/lib64/node_exporter/collectors/env.sh
+
+#NODE_TEXTFILE_DIR=`pwd` 
+
+
+function CheckDoveadm()
+{
+if CommandExists doveadm
+then
+	echo ""
+else
+	echo "Could'nt find doveadm binary. Make sure that Dovecot is installed and \$PATH is set accordingly!"
+	exit 1
+fi
+}	
+
+
+function UsersPerProtocol()
+{
+
+for PROTO in imap pop3 sieve
+do
+	if [[ $PROTO == imap ]]
+	then
+		USERS_IMAP+=$($DOVEADM_BIN -h who | awk ' { print $3 } ' | grep -o "$PROTO" | wc -l)
+	elif [[ $PROTO == pop3 ]]
+	then
+		USERS_POP3+=$($DOVEADM_BIN -h who | awk ' { print $3 } ' | grep -o "$PROTO" | wc -l)
+	elif  [[ $PROTO == pop3 ]]
+	then
+		USERS_SIEVE+=$($DOVEADM_BIN -h who | awk ' { print $3 } ' | grep -o "$PROTO" | wc -l)
+	fi
+
+	
+done
+
+#Write Metrics
+#TOTAL USERS
+if [[ $USERS_IMAP -lt 1 ]] || [[ "$USERS_IMAP" -eq "" ]]
+then
+        USERS_IMAP=0
+        echo "node_dovecot_users{protocol=\"imap\"} $USERS_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_users{protocol=\"imap\"} $USERS_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+if [[ $USERS_POP3 -lt 1 ]] || [[ "$USERS_POP3" -eq "" ]]
+then
+        USERS_POP3=0
+        echo "node_dovecot_users{protocol=\"pop3\"} $USERS_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_users{protocol=\"pop3\"} $USERS_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+if [[ $USERS_SIEVE -lt 1 ]] || [[ "$USERS_SIEVE" -eq "" ]]
+then
+        USERS_SIEVE=0
+        echo "node_dovecot_users{protocol=\"sieve\"} $USERS_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+else
+        echo "node_dovecot_users{protocol=\"sieve\"} $USERS_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+}
+
+function ConnectionsPerProtocol()
+{
+
+
+for PROTO in imap pop3 sieve
+do
+        if [[ $PROTO == imap ]]
+        then
+	        for CONNS_IMAP in $($DOVEADM_BIN -h who |  awk '$3 == "imap" { print $2 }')
+		do
+	                TOTAL_IMAP=$((TOTAL_IMAP+$CONNS_IMAP))
+		done
+        elif [[ $PROTO == pop3 ]]
+        then
+                for CONNS_POP3 in $($DOVEADM_BIN -h who |  awk '$3 == "pop3" { print $2 }')
+                do
+                        TOTAL_POP3=$((TOTAL_POP3+$CONNS_POP3))
+                done
+        elif  [[ $PROTO == sieve ]]
+        then
+
+                for CONNS_SIEVE in $($DOVEADM_BIN -h who |  awk '$3 == "sieve" { print $2 }')
+                do
+                        TOTAL_SIEVE=$((TOTAL_SIEVE+$CONNS_SIEVE))
+                done
+
+        fi
+
+
+done
+
+#Write Metrics
+#TOTAL CONNECTIONS
+if [[ $TOTAL_IMAP -lt 1 ]] || [[ "$TOTAL_IMAP" -eq "" ]]
+then
+        TOTAL_IMAP=0
+        echo "node_dovecot_connections{protocol=\"imap\"} $TOTAL_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"imap\"} $TOTAL_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+if [[ $TOTAL_POP3 -lt 1 ]] || [[ "$TOTAL_POP3" -eq "" ]]
+then
+        TOTAL_POP3=0
+        echo "node_dovecot_connections{protocol=\"pop3\"} $TOTAL_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"pop3\"} $TOTAL_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+if [[ $TOTAL_SIEVE -lt 1 ]] || [[ "$TOTAL_SIEVE" -eq "" ]]
+then
+        TOTAL_SIEVE=0
+        echo "node_dovecot_connections{protocol=\"sieve\"} $TOTAL_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"sieve\"} $TOTAL_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+}
+
+
+function ReplicatorStatus()
+{
+
+SYNC_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'sync' requests" | awk ' { print $4 } ')
+HIGH_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'high' requests" | awk ' { print $4 } ')
+LOW_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'low' requests" | awk ' { print $4 } ')
+FAILED_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'failed' requests" | awk ' { print $4 } ')
+FULL_RESYNC_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'full resync' requests" | awk ' { print $5 } ')
+WAITING_FAILED=$($DOVEADM_BIN replicator status | grep "Waiting 'failed' requests" | awk ' { print $4 } ')
+TOTAL_NO_USERS=$($DOVEADM_BIN replicator status | grep "Total number of known users" | awk ' { print $6 } ')
+
+#Write Metrics
+echo "node_dovecot_replicator_states{status=\"sync_requests\"} $SYNC_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"high_requests\"} $HIGH_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"low_requests\"} $LOW_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"failed_requests\"} $FAILED_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"full_resync_requests\"} $FULL_RESYNC_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"waiting_failed_requests\"} $WAITING_FAILED" >> $NODE_TEXTFILE_DIR/dovecot.prom
+echo "node_dovecot_replicator_states{status=\"total_known_users\"} $TOTAL_NO_USERS" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+
+}
+
+
+function FlushResults()
+{
+
+#flush the previous results
+echo -n "" > $NODE_TEXTFILE_DIR/dovecot.prom
+
+}
+
+function AssembleNodeMetrics()
+{
+#flush the previous results
+echo -n "" > $NODE_TEXTFILE_DIR/dovecot.prom
+
+#TOTAL USERS
+if [[ $USERS_IMAP -lt 1 ]] || [[ "$USERS_IMAP" -eq "" ]]
+then
+	USERS_IMAP=0
+        echo "node_dovecot_users{protocol=\"imap\"} $USERS_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_users{protocol=\"imap\"} $USERS_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+if [[ $USERS_POP3 -lt 1 ]] || [[ "$USERS_POP3" -eq "" ]]
+then
+        USERS_POP3=0
+        echo "node_dovecot_users{protocol=\"pop3\"} $USERS_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_users{protocol=\"pop3\"} $USERS_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+if [[ $USERS_SIEVE -lt 1 ]] || [[ "$USERS_SIEVE" -eq "" ]]
+then
+        USERS_SIEVE=0
+        echo "node_dovecot_users{protocol=\"sieve\"} $USERS_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+else
+        echo "node_dovecot_users{protocol=\"sieve\"} $USERS_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+
+#TOTAL CONNECTIONS
+if [[ $TOTAL_IMAP -lt 1 ]] || [[ "$TOTAL_IMAP" -eq "" ]]
+then
+        TOTAL_IMAP=0
+        echo "node_dovecot_connections{protocol=\"imap\"} $TOTAL_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"imap\"} $TOTAL_IMAP" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+
+if [[ $TOTAL_POP3 -lt 1 ]] || [[ "$TOTAL_POP3" -eq "" ]]
+then
+        TOTAL_POP3=0
+        echo "node_dovecot_connections{protocol=\"pop3\"} $TOTAL_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"pop3\"} $TOTAL_POP3" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+
+if [[ $TOTAL_SIEVE -lt 1 ]] || [[ "$TOTAL_SIEVE" -eq "" ]]
+then
+        TOTAL_SIEVE=0
+        echo "node_dovecot_connections{protocol=\"sieve\"} $TOTAL_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+
+else
+        echo "node_dovecot_connections{protocol=\"sieve\"} $TOTAL_SIEVE" >> $NODE_TEXTFILE_DIR/dovecot.prom
+fi
+}
+
+
+
+function Help()
+{
+	echo ' ' 
+        echo "$(basename "$0") [options]"
+        echo '  '
+        echo 'use these switches to define what you want to get scraped:'
+        echo ' -b | --basic		- scrapes how many and through which protocols your users are connected to your server.'
+        echo ' -a | --advanced	- scrapes all the data from the stats plugin of Dovecot. You need the stats and imap_stats plugins enabled to make use of this.'
+        echo ' -r | --replicator	- scrapes current stats of your replicator status. Only use this when you have the replicator service enabled.'
+        echo '			  Has to be used in conjunction with the basic switch.'
+
+
+}
+
+
+
+while test $# != 0; do
+    case "$1" in
+        --basic|-b)
+                SCRAPE_BASIC=1
+		CheckDoveadm
+		FlushResults
+		UsersPerProtocol
+		ConnectionsPerProtocol
+		if [[ $SCRAPE_REPLICATOR == 1 ]]
+		then
+			ReplicatorStatus
+		fi
+        ;;
+        --advanced|-a)
+                SCRAPE_ADVANCED=1
+		CheckDoveadm
+        ;;
+	--replicator|-r)
+		SCRAPE_REPLICATOR=1
+		ReplicatorStatus
+		
+	;;
+    -\?|-h|--help)
+	Help
+      exit 0
+      ;;
+    *)
+	echo 'Unrecognised argument "'"$1"'"'
+	Help
+	exit 2
+      ;;
+  esac
+  shift
+done
+

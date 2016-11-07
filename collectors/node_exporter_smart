@@ -36,7 +36,7 @@ then
             echo "MEGA_CLI_BIN has been not set in env.sh!"
             echo "Going to try to find it via PATH"
             
-            for i in "MegaCli64 megacli64 megacli"
+            for i in MegaCli64 megacli64 megacli
             do
                 if command_exists $i
                 then
@@ -86,7 +86,7 @@ then
     for LSI_DRIVE in ${LSI_DRIVES[*]}
     do
 	echo "${LSI_DRIVES[*]}"
-        RAW_LSI_VALUE+=$(smartctl -d sat+megaraid,$LSI_DRIVE -A $LSI_ARRAY | awk '/;/{f=1;};f{print;};/ID#/{f=1;}' | sed '$d' | awk ' { print "'$LSI_ARRAY'_Id'$LSI_DRIVE'"","$2","$10"; "} ')
+        RAW_LSI_VALUE+=$(smartctl -d sat+megaraid,$LSI_DRIVE -A $LSI_ARRAY | awk '/;/{f=1;};f{print;};/ID#/{f=1;}' | sed '$d' | awk ' { print "'$LSI_ARRAY'/id'$LSI_DRIVE'"","$2","$10"; "} ')
 
     done
 
