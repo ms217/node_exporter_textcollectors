@@ -6,19 +6,44 @@
 
 source /usr/lib64/node_exporter/collectors/env.sh
 
-#NODE_TEXTFILE_DIR=`pwd` 
 
 
 function CheckDoveadm()
 {
 if CommandExists doveadm
 then
-	echo ""
+        DOVEADM_BIN=$(type doveadm | awk ' { print $3 }')
+
 else
-	echo "Could'nt find doveadm binary. Make sure that Dovecot is installed and \$PATH is set accordingly!"
+        echo "Couldn't find doveadm binary. Make sure that Dovecot is installed and \$PATH is set accordingly!"
+        exit 1
+fi
+
+}	
+
+function CheckDovecotVersion()
+{
+if CommandExists dovecot
+then
+
+
+DOVECOT_BIN=$(type dovecot | awk ' { print $3 }')
+DOVECOT_VERSION=`$DOVECOT_BIN --version`
+STRIPPED_VERSION=$(echo ${DOVECOT_VERSION//.})
+
+if [ "$STRIPPED_VERSION" -le "2216" ]
+then
+	echo "Your Dovecot version is too old"
+	echo "Dovecot should be at least version 2.2.16 or newer"
 	exit 1
 fi
-}	
+
+else
+        echo "Couldn't find dovecot binary. Make sure that Dovecot is installed and \$PATH is set accordingly!"
+        exit 1
+fi
+
+}
 
 
 function UsersPerProtocol()
@@ -140,13 +165,15 @@ fi
 function ReplicatorStatus()
 {
 
-SYNC_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'sync' requests" | awk ' { print $4 } ')
-HIGH_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'high' requests" | awk ' { print $4 } ')
-LOW_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'low' requests" | awk ' { print $4 } ')
-FAILED_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'failed' requests" | awk ' { print $4 } ')
-FULL_RESYNC_REQUESTS=$($DOVEADM_BIN replicator status | grep "Queued 'full resync' requests" | awk ' { print $5 } ')
-WAITING_FAILED=$($DOVEADM_BIN replicator status | grep "Waiting 'failed' requests" | awk ' { print $4 } ')
-TOTAL_NO_USERS=$($DOVEADM_BIN replicator status | grep "Total number of known users" | awk ' { print $6 } ')
+#doveadm -h -f tab replicator status | awk -F'\t' ' { print $2 } '
+
+SYNC_REQUESTS=$($DOVEADM_BIN -h -f tab replicator status | grep "Queued 'sync' requests" | awk -F'\t' ' { print $2 } ')
+HIGH_REQUESTS=$($DOVEADM_BIN -h -f tab replicator status | grep "Queued 'high' requests" | awk -F'\t' ' { print $2 } ')
+LOW_REQUESTS=$($DOVEADM_BIN -h -f tab replicator status | grep "Queued 'low' requests" | awk -F'\t' ' { print $2 } ')
+FAILED_REQUESTS=$($DOVEADM_BIN -h -f tab replicator status | grep "Queued 'failed' requests" | awk -F'\t' ' { print $2 } ')
+FULL_RESYNC_REQUESTS=$($DOVEADM_BIN -h -f tab replicator status | grep "Queued 'full resync' requests" | awk -F'\t' ' { print $2 } ')
+WAITING_FAILED=$($DOVEADM_BIN -h -f tab replicator status | grep "Waiting 'failed' requests" | awk -F'\t' ' { print $2 } ')
+TOTAL_NO_USERS=$($DOVEADM_BIN -h -f tab replicator status | grep "Total number of known users" | awk -F'\t' ' { print $2 } ')
 
 #Write Metrics
 echo "node_dovecot_replicator_states{status=\"sync_requests\"} $SYNC_REQUESTS" >> $NODE_TEXTFILE_DIR/dovecot.prom
@@ -257,6 +284,7 @@ while test $# != 0; do
         --basic|-b)
                 SCRAPE_BASIC=1
 		CheckDoveadm
+		CheckDovecotVersion
 		FlushResults
 		UsersPerProtocol
 		ConnectionsPerProtocol
