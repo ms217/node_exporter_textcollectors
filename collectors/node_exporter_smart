@@ -14,16 +14,12 @@ declare -a RAW_VALUE
 declare -a LSI_DRIVES
 
 
-. /usr/lib64/node_exporter/collectors/env.sh
+source /usr/lib64/node_exporter/collectors/env.sh
 
 
 
-function CommandExists() {
-    type "$1" &> /dev/null ;
-}
-
-function GetDrives() {
-echo $0
+function GetDrives()
+{
 
 if [[ $SCRAPE_LSI = 1 ]]
 then
@@ -34,19 +30,20 @@ then
         then
 
             echo "MEGA_CLI_BIN has been not set in env.sh!"
-            echo "Going to try to find it via PATH"
+            echo "Going to try to find it via \$PATH"
             
             for i in MegaCli64 megacli64 megacli
             do
-                if command_exists $i
+                if CommandExists $i
                 then
 
-                    MEGA_CLI_BIN=$i
+                    MEGA_CLI_BIN=$(type $i | awk ' { print $3 }')
                     break
 
                 else
     
-                    echo "Couldn't find MegaCli64/megacli64 or megacli in \$PATH either, Exit."
+                    echo "Couldn't find MegaCli64/megacli64 or megacli in \$PATH either."
+                    echo "Exit."                    
                     exit 1
 
                 fi
@@ -57,7 +54,7 @@ then
 
         fi
 
-
+        #Expose HDDs connected to the LSI MegaRaid Controller by Device Id
         for GET_LSI_DRIVES in $($MEGA_CLI_BIN -pdlist -$LSI_ADAPTER_ID -NoLog | grep 'Device Id' |awk ' { print $ 3 } ')
         do
 
@@ -68,6 +65,7 @@ then
     
     else
 
+    #Expose HDDs by its device name (local S-ATA Controller)
     for GET_DRIVE in $(cat /proc/partitions | awk ' { print $4 } ' | egrep "(s|h).*[a-z]$")
     do
         DRIVES+="/dev/$GET_DRIVE "
@@ -80,6 +78,7 @@ fi
 function GetRawSmartMetrics() {
 #get the raw values of each drive
 
+#Scrape SMART Raw Values of each HDD behind a LSI MegaRaid Adapter
 if [[ $SCRAPE_LSI = 1 ]]
 then
 
@@ -91,7 +90,8 @@ then
     done
 
 else
-    
+#Scrape SMART Raw Values of each HDD that is connected to the local S-ATA Controller
+
     for DRIVE in ${DRIVES[*]}
     do
         RAW_VALUE+=$(smartctl -A $DRIVE | awk '/;/{f=1;};f{print;};/ID#/{f=1;}' | sed '$d' | awk ' { print "'$DRIVE'"","$2","$10"; " } ')
