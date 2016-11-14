@@ -1,8 +1,26 @@
 #!/bin/bash
 #
-#Author/Copyright: Michael Seevogel (c) 2016
-#License: GNU GPL v3
+#node_exporter_senderscore
 #
+#Senderscore Collector that exposes IP-Reputation Metrics to node_exporter's textfile collector
+#
+#Copyright (C) 2016  Michael Seevogel <michael[at]michaelseevogel.de>
+#
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
 #Brief Description:
 #
 #This script will do a reverse lookup of your configured IPs at Return Path's Senderscore reputation system
@@ -10,11 +28,12 @@
 #Kinda handy if you want to monitor the impact of your mailflow when you send mails to the big mailproviders such as Hotmail/Outlook, Yahoo or Comcast and couple of others.
 #
 #Set this script up via cron. You may let the cronjob run something between every 10-60 minutes.
-
+#
 #This script needs the ip command and you may have to define the PATH variable or alternatively the IP_CMD variable.
 #That's up to you and what you prefer...
 
-. /usr/lib64/node_exporter/collectors/env.sh
+
+source /usr/lib64/node_exporter/collectors/env.sh
  
 IP_CMD=`which ip`  
 
@@ -45,7 +64,7 @@ do
 		#    A score between  0 - 30 is actually very bad and your mails will most likely get rejected by the receiving MTA
 		#    A score between 31 - 60 is still bad. Your mails may still get rejected but the chance increases slightly that your mails may at least arrive the junk folder of your recipients
 		#    A score between 61 - 80 could still mean that your mails may end in the junk folder of your recipients mailbox, but your mails should be in most cases accepted by the receiving MTA.
-		#    A score between 81 - 100 is what you should generally aim for.
+		#    A score between 81 - 100 is what you should generally aim for. The higher the better.
 
 		GETSCORE=0
 	fi
