@@ -4,7 +4,7 @@
 #******************************************************************************************************************
 
 #Adjust this var so that it matches what you've defined through --collector.textfile.directory
-NODE_TEXTFILE_DIR=/var/lib/prometheus/metrics
+NODE_TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
 PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"
 
 
@@ -23,8 +23,9 @@ LSI_ARRAY=/dev/sda
 #Global Functions
 #******************************************************************************************************************
 
+
 function CommandExists() {
-type "$1" >/dev/null 2>&1
+	type "$1" >/dev/null 2>&1
 }
 
 
